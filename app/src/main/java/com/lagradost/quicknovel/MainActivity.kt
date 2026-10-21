@@ -470,10 +470,15 @@ class MainActivity : AppCompatActivity() {
         )
 
         navView.setOnItemSelectedListener { item ->
-            onNavDestinationSelected(
-                item,
-                navController = navController
-            )
+            if (item.itemId == R.id.navigation_extensions) {
+                PluginsDialogFragment().show(supportFragmentManager, "plugins_dialog")
+                false
+            } else {
+                onNavDestinationSelected(
+                    item,
+                    navController = navController
+                )
+            }
         }
 
         navOptions = NavOptions.Builder()
