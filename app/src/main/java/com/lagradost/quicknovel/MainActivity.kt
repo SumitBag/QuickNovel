@@ -56,11 +56,13 @@ import com.lagradost.quicknovel.mvvm.observeNullable
 import com.lagradost.quicknovel.mvvm.safe
 import com.lagradost.quicknovel.network.CloudflareKiller
 import com.lagradost.quicknovel.providers.RedditProvider
+import com.lagradost.quicknovel.ui.PluginsDialogFragment
 import com.lagradost.quicknovel.ui.ReadType
 import com.lagradost.quicknovel.ui.common.ImmutableSearchResponse
 import com.lagradost.quicknovel.ui.download.DownloadFragment
 import com.lagradost.quicknovel.ui.result.ResultFragment
 import com.lagradost.quicknovel.ui.result.ResultViewModel
+import com.lagradost.quicknovel.util.Apis
 import com.lagradost.quicknovel.util.Apis.Companion.apis
 import com.lagradost.quicknovel.util.Apis.Companion.getApiSettings
 import com.lagradost.quicknovel.util.Apis.Companion.printProviders
@@ -165,7 +167,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // === API ===
         lateinit var navOptions: NavOptions
 
         fun loadResult(url: String, apiName: String, startAction: Int = 0) {
@@ -185,21 +186,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         fun FragmentActivity.loadResult(url: String, apiName: String, startAction: Int = 0) {
-            // SearchFragment.currentDialog?.dismiss()
             runOnUiThread {
                 this.navigate(
                     R.id.global_to_navigation_results,
                     ResultFragment.newInstance(url, apiName, startAction)
                 )
-                /*supportFragmentManager.beginTransaction()
-                        .setCustomAnimations(
-                            R.anim.enter_anim,
-                            R.anim.exit_anim,
-                            R.anim.pop_enter,
-                            R.anim.pop_exit
-                        )
-                        .add(R.id.homeRoot, ResultFragment().newInstance(url, apiName, startAction))
-                        .commit()*/
             }
         }
 
@@ -216,7 +207,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // kinda dirty ik
             val reddit = RedditProvider()
             RedditProvider.getName(url)?.let { name ->
                 try {
@@ -243,80 +233,6 @@ class MainActivity : AppCompatActivity() {
             }
             return false
         }
-
-        /*fun AppCompatActivity.backPressed(): Boolean {
-            this.window?.navigationBarColor =
-                this.colorFromAttribute(R.attr.primaryGrayBackground)
-
-            val currentFragment = supportFragmentManager.fragments.last {
-                it.isVisible
-            }
-
-            if (currentFragment is NavHostFragment) {
-                val child = currentFragment.childFragmentManager.fragments.last {
-                    it.isVisible
-                }
-                if (child is MainPageFragment) {
-                    val navController = findNavController(R.id.nav_host_fragment)
-                    navController.navigate(R.id.navigation_homepage, Bundle(), navOptions)
-                    return true
-                }
-            }
-
-            if (currentFragment != null && supportFragmentManager.fragments.size > 2) {
-                if (supportFragmentManager.fragments.size == 3) {
-                    //window?.navigationBarColor =
-                    //    colorFromAttribute(R.attr.primaryBlackBackground)
-                }
-                //MainActivity.showNavbar()
-                supportFragmentManager.beginTransaction()
-                    .setCustomAnimations(
-                        R.anim.enter_anim,
-                        R.anim.exit_anim,
-                        R.anim.pop_enter,
-                        R.anim.pop_exit
-                    )
-                    .remove(currentFragment)
-                    .commitAllowingStateLoss()
-                supportFragmentManager
-                return true
-            }
-            return false
-        }*/
-
-        /* fun semihideNavbar() {
-             activity
-             val w: Window? = activity?.window // in Activity's onCreate() for instance
-             if (w != null) {
-                 val uiVisibility =
-                     View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                 w.decorView.systemUiVisibility = uiVisibility
-                 w.navigationBarColor =
-                     activity?.getResourceColor(android.R.attr.navigationBarColor, 0.7F)
-             }
-         }
-
-         fun showNavbar() {
-             val w: Window? = activity.window // in Activity's onCreate() for instance
-             if (w != null) {
-                 w.decorView.systemUiVisibility = 0
-                 w.navigationBarColor = android.R.attr.navigationBarColor
-             }
-         }
-
-         fun transNavbar(trans: Boolean) {
-             val w: Window? = activity.window // in Activity's onCreate() for instance
-             if (w != null) {
-                 if (trans) {
-                     w.setFlags(
-                         WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS,
-                         WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS
-                     )
-                 } else {
-                     w.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
-                 }
-             }
-         }*/
     }
 
     private fun NavDestination.matchDestination(@IdRes destId: Int): Boolean =
@@ -386,7 +302,7 @@ class MainActivity : AppCompatActivity() {
 
         val file = StorageFile.from(ctx, uri)
         val fileName = file?.name
-        val mimeType = file?.mimeType //ctx.contentResolver.getType(uri)
+        val mimeType = file?.mimeType
         println("Loaded epub file. Selected URI path: $uri - Name: $fileName with type $mimeType")
 
         ioSafe {
@@ -410,10 +326,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-    //imports area -------------------------------
     private val epubPathPicker =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            // It lies, it can be null if file manager quits.
             if (uri == null) return@registerForActivityResult
             importUri(uri)
         }
@@ -422,22 +336,17 @@ class MainActivity : AppCompatActivity() {
         safe {
             epubPathPicker.launch(
                 arrayOf(
-                    //"text/plain",
-                    //"text/str",
-                    //"application/octet-stream",
                     "application/pdf",
                     "application/epub+zip",
                 )
             )
         }
     }
+
     private fun openEpubPickers() {
         safe {
             epubPathsPicker.launch(
                 arrayOf(
-                    //"text/plain",
-                    //"text/str",
-                    //"application/octet-stream",
                     "application/pdf",
                     "application/epub+zip",
                 )
@@ -449,9 +358,7 @@ class MainActivity : AppCompatActivity() {
     var bottomPreviewPopup: BottomSheetDialog? = null
     private fun showPreviewPopupDialog(): BottomPreviewBinding {
         val ret = (bottomPreviewBinding ?: run {
-            val builder =
-                BottomSheetDialog(this)
-
+            val builder = BottomSheetDialog(this)
             val bottom = BottomPreviewBinding.inflate(layoutInflater, null, false)
             builder.setContentView(bottom.root)
             builder.setOnDismissListener {
@@ -468,26 +375,16 @@ class MainActivity : AppCompatActivity() {
         return ret
     }
 
-    /* // MOON READER WONT RETURN THE DURATION, BUT THIS CAN BE USED FOR SOME USER FEEDBACK IN THE FUTURE??? SEE @moonreader
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-    }*/
-
     override fun onResume() {
         super.onResume()
         activity = this
         mainActivity = this
     }
 
-    /*override fun onBackPressed() {
-        if (backPressed()) return
-        super.onBackPressed()
-    }*/
-
     private fun handleIntent(intent: Intent?) {
         if (intent == null) return
         if (intent.action == Intent.ACTION_SEND) {
-            val extraText = try { // I don't trust android
+            val extraText = try {
                 intent.getStringExtra(Intent.EXTRA_TEXT)
             } catch (e: Exception) {
                 null
@@ -496,7 +393,6 @@ class MainActivity : AppCompatActivity() {
             val item = if (cd != null && cd.itemCount > 0) cd.getItemAt(0) else null
             val url = item?.text?.toString()
 
-            // idk what I am doing, just hope any of these work
             if (item?.uri != null && loadResultFromUrl(item.uri?.toString())) {
                 return
             }
@@ -516,10 +412,7 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
     }
 
-
     private fun updateNavBar(destination: NavDestination) {
-        //this.hideKeyboard()
-
         val isNavVisible = listOf(
             R.id.navigation_mainpage,
             R.id.navigation_homepage,
@@ -536,7 +429,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        updateLocale() // android fucks me by chaining lang when rotating the phone
+        updateLocale()
     }
 
     var binding: ActivityMainBinding? = null
@@ -549,6 +442,9 @@ class MainActivity : AppCompatActivity() {
         CommonActivity.loadThemes(this)
         CommonActivity.init(this)
 
+        // Dynamically load installed LNReader JS plugins
+        Apis.reloadApis(this)
+
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding!!.root)
@@ -558,19 +454,7 @@ class MainActivity : AppCompatActivity() {
         val navController = navHostFragment.navController
 
         navController.addOnDestinationChangedListener { _: NavController, navDestination: NavDestination, bundle: Bundle? ->
-            // Intercept search and add a query
             updateNavBar(navDestination)
-            /*if (navDestination.matchDestination(R.id.navigation_search) && !nextSearchQuery.isNullOrBlank()) {
-                bundle?.apply {
-                    this.putString(SearchFragment.SEARCH_QUERY, nextSearchQuery)
-                }
-            }
-
-            if (isTvSettings()) {
-                if (navDestination.matchDestination(R.id.navigation_home)) {
-                    attachBackPressedCallback()
-                } else detachBackPressedCallback()
-            }*/
         }
 
         val navView: BottomNavigationView = findViewById(R.id.nav_view)
@@ -592,9 +476,6 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        //val navController = findNavController(R.id.nav_host_fragment)
-
-        //window.navigationBarColor = colorFromAttribute(R.attr.darkBackground)
         navOptions = NavOptions.Builder()
             .setLaunchSingleTop(true)
             .setEnterAnim(R.anim.nav_enter_anim)
@@ -603,34 +484,6 @@ class MainActivity : AppCompatActivity() {
             .setPopExitAnim(R.anim.nav_pop_exit)
             .setPopUpTo(navController.graph.startDestinationId, false)
             .build()
-        /*
-                navView.setOnNavigationItemReselectedListener { item ->
-                    return@setOnNavigationItemReselectedListener
-                }*/
-        /*navView.setOnNavigationItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.navigation_homepage -> {
-                    navController.navigate(R.id.navigation_homepage, null, navOptions)
-                }
-
-                R.id.navigation_search -> {
-                    navController.navigate(R.id.navigation_search, null, navOptions)
-                }
-
-                R.id.navigation_download -> {
-                    navController.navigate(R.id.navigation_download, null, navOptions)
-                }
-
-                R.id.navigation_history -> {
-                    navController.navigate(R.id.navigation_history, null, navOptions)
-                }
-
-                R.id.navigation_settings -> {
-                    navController.navigate(R.id.navigation_settings, null, navOptions)
-                }
-            }
-            true
-        }*/
 
         observe(viewModel.readState) {
             bottomPreviewBinding?.apply {
@@ -641,7 +494,6 @@ class MainActivity : AppCompatActivity() {
 
         observe(viewModel.downloadState) { progressState ->
             val hasDownload = progressState != null && progressState.progress > 0
-
 
             bottomPreviewBinding?.downloadDeleteTrashFromResult?.apply {
                 isVisible = hasDownload
@@ -739,7 +591,6 @@ class MainActivity : AppCompatActivity() {
 
                         resultviewPreviewMetaStatus.apply {
                             val statusTxt = d.status?.resource?.let { getString(it) } ?: ""
-
                             resultviewPreviewMetaStatus.text = statusTxt
                             resultviewPreviewMetaStatus.isVisible = statusTxt.isNotBlank()
                         }
@@ -756,22 +607,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        //navView.itemRippleColor =
-        //    ColorStateList.valueOf(getResourceColor(R.attr.colorPrimary, 0.1f))
-
         val apiNames = getApiSettings()
         providersActive = apiNames
         val edit = settingsManager.edit()
         edit.putStringSet(getString(R.string.search_providers_list_key), providersActive)
         edit.apply()
-        /*
-        val apiName = settingsManager.getString(getString(R.string.provider_list_key), apis[0].name)
-        activeAPI = getApiFromName(apiName ?: apis[0].name)
-        val edit = settingsManager.edit()
-        edit.putString(getString(R.string.provider_list_key, activeAPI.name), activeAPI.name)
-        edit.apply()*/
 
-        thread { // IDK, WARMUP OR SMTH, THIS WILL JUST REDUCE THE INITIAL LOADING TIME FOR DOWNLOADS, NO REAL USAGE, SEE @WARMUP
+        thread {
             val keys = getKeys(DOWNLOAD_FOLDER)
             for (k in keys) {
                 getKey<DownloadFragment.DownloadData>(k)
@@ -787,14 +629,10 @@ class MainActivity : AppCompatActivity() {
         if (!checkWrite()) {
             requestRW()
         }
-        // Note that android can normally not request 2 permissions at once
-        // But storage permissions are not required for android 13, but notifications are
         requestNotifications()
 
         printProviders()
 
-        //loadResult("https://www.novelpassion.com/novel/battle-frenzy")
-        //loadResult("https://www.royalroad.com/fiction/40182/only-villains-do-that", MainActivity.activeAPI.name)
         thread {
             test()
         }
@@ -805,9 +643,6 @@ class MainActivity : AppCompatActivity() {
                     window?.navigationBarColor = colorFromAttribute(R.attr.primaryGrayBackground)
                     updateLocale()
 
-                    // If we don't disable we end up in a loop with default behavior calling
-                    // this callback as well, so we disable it, run default behavior,
-                    // then re-enable this callback so it can be used for next back press.
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
                     isEnabled = true
@@ -817,7 +652,5 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun test() {
-        // val response = app.get("https://ranobes.net/up/a-bored-lich/936969-1.html")
-        // println(response.text)
     }
 }
