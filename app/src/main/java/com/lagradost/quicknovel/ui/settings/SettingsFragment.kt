@@ -1,22 +1,16 @@
 package com.lagradost.quicknovel.ui.settings
 
 import android.content.Context
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.edit
-import androidx.fragment.app.Fragment
 import androidx.preference.PreferenceManager
 import com.lagradost.cloudstream4.BaseComposeFragment
 import com.lagradost.quicknovel.APIRepository.Companion.providersActive
+import com.lagradost.quicknovel.CommonActivity.activity
 import com.lagradost.quicknovel.R
 import com.lagradost.quicknovel.compose.LaunchedEffectSkipFirst
 import com.lagradost.quicknovel.ui.PluginsDialogFragment
@@ -60,19 +54,16 @@ class SettingsFragment : BaseComposeFragment(), SearchableSettings by SettingScr
     companion object {
         fun showSearchProviders(context: Context?) {
             if (context == null) return
-            val activity = context as? AppCompatActivity
+            val act = activity as? AppCompatActivity ?: return
 
-            // Prompt user with an option to open the Extensions installer directly
             val options = arrayOf("Manage Extensions (Install/Uninstall)", "Configure Active Search Providers")
             
-            androidx.appcompat.app.AlertDialog.Builder(context, R.style.AlertDialogCustom)
+            androidx.appcompat.app.AlertDialog.Builder(act, R.style.AlertDialogCustom)
                 .setTitle("Providers & Extensions")
                 .setItems(options) { _, which ->
                     when (which) {
                         0 -> {
-                            activity?.supportFragmentManager?.let { fm ->
-                                PluginsDialogFragment().show(fm, "plugins_dialog")
-                            }
+                            PluginsDialogFragment().show(act.supportFragmentManager, "plugins_dialog")
                         }
                         1 -> {
                             val apiNames = apis.map { it.name }
@@ -80,21 +71,21 @@ class SettingsFragment : BaseComposeFragment(), SearchableSettings by SettingScr
                                 val flag = SubtitleHelper.getFlagFromIso(it.lang) ?: "🌐"
                                 "$flag ${it.name}"
                             }
-                            val active = context.getApiSettings()
-                            showMultiDialog(
+                            val active = act.getApiSettings()
+                            act.showMultiDialog(
                                 displayNames,
                                 apiNames.mapIndexed { index, s -> index to active.contains(s) }
                                     .filter { it.second }.map { it.first }.toList(),
-                                context.getString(R.string.search_providers),
+                                act.getString(R.string.search_providers),
                                 {}) { list ->
-                                val settingsManager = PreferenceManager.getDefaultSharedPreferences(context)
+                                val settingsManager = PreferenceManager.getDefaultSharedPreferences(act)
                                 settingsManager.edit {
                                     putStringSet(
-                                        context.getString(R.string.search_providers_list_key),
+                                        act.getString(R.string.search_providers_list_key),
                                         list.map { apiNames[it] }.toSet()
                                     )
                                 }
-                                providersActive = context.getApiSettings()
+                                providersActive = act.getApiSettings()
                             }
                         }
                     }
