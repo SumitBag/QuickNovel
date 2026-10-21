@@ -6,6 +6,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import com.lagradost.quicknovel.*
 import com.lagradost.quicknovel.MainActivity.Companion.app
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 /**
@@ -30,15 +31,16 @@ open class LNReaderBridge(
             quickJs.set("networkBridge", NetworkBridge::class.java, object : NetworkBridge {
                 override fun fetch(url: String): String {
                     return try {
-                        val response = app.get(url)
-                        response.text
+                        runBlocking(Dispatchers.IO) {
+                            val response = app.get(url)
+                            response.text
+                        }
                     } catch (e: Exception) {
                         ""
                     }
                 }
             })
 
-            // Polyfill a basic fetch on top of the OkHttp bridge
             val runtimeInit = """
                 var global = globalThis;
                 function fetch(url) {
