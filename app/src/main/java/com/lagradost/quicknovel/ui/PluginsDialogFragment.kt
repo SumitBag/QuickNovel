@@ -50,9 +50,16 @@ class PluginsDialogFragment : DialogFragment() {
             mutableStateOf(Apis.apis.map { it.name }.toSet())
         }
 
+        fun loadData() {
+            isLoading = true
+            scope.launch {
+                plugins = DynamicPluginManager.fetchAvailablePlugins()
+                isLoading = false
+            }
+        }
+
         LaunchedEffect(Unit) {
-            plugins = DynamicPluginManager.fetchAvailablePlugins()
-            isLoading = false
+            loadData()
         }
 
         Column(
@@ -80,10 +87,24 @@ class PluginsDialogFragment : DialogFragment() {
                 ) {
                     CircularProgressIndicator()
                 }
+            } else if (plugins.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("No extensions found or network error.", style = MaterialTheme.typography.bodyMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = { loadData() }) {
+                            Text("Retry")
+                        }
+                    }
+                }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(plugins) { plugin ->
-                        val isInstalled = installedNames.contains(plugin.name)
+                        val isInstalled = installedNames.contains(plugin.id.replaceFirstChar { it.uppercase() }) ||
+                                          installedNames.contains(plugin.name)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
