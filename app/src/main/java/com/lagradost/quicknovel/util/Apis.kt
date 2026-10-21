@@ -46,7 +46,6 @@ import com.lagradost.quicknovel.providers.NovelManiaProvider
 import com.lagradost.quicknovel.providers.NovelPhoenixProvider
 import com.lagradost.quicknovel.providers.NovelasLigerasProvider
 import com.lagradost.quicknovel.providers.PawReadProver
-import com.lagradost.quicknovel.providers.PlanetaEpubProvider
 import com.lagradost.quicknovel.providers.QuanbenProvider
 import com.lagradost.quicknovel.providers.RanobeHubProvider
 import com.lagradost.quicknovel.providers.RanobesProvider
@@ -73,21 +72,15 @@ import com.lagradost.quicknovel.util.Coroutines.ioSafe
 
 class Apis {
     companion object {
-        val apis: List<MainAPI> = arrayOf(
-            //AllProvider(),
+        val defaultApis: List<MainAPI> = arrayOf(
             AllNovelProvider(),
             AnnasArchive(),
             ArNoProvider(),
             AsianNovelProvider(),
-            //AzynovelProvider(), // dont exist anymore
-            //BestLightNovelProvider(), //dont exist anymore
             BrightNovelProvider(),
             ChrysanthemumGardenProvider(),
             ChikariProvider(),
-            //ComrademaoProvider(), // domain sold/down?
             DevilNovelsProvider(),
-            //EfremnetProvider(), // domain is expired
-            //EngNovelProvider(),
             FanMtlnProvider(),
             FaqWikiProvider(),
             FenrirRealProvider(),
@@ -98,14 +91,11 @@ class Apis {
             IndoWebNovelProvider(),
             KolNovelProvider(),
             LibReadProvider(),
-            //LightNovelPubProvider(), // Got cloudflare, but probably bypassable
             LightNovelTranslationsProvider(),
-           // LightNovelWorldProvider(), // Replaced with chikari.moe
             LnoriProvider(),
             LnMTLProvider(),
             LuxonScansProvider(),
             MeioNovelProvider(),
-            //MNovelFreeProvider(), // same as NovelFullVipProvider
             MtlNovelProvider(),
             NoBadNovelProvider(),
             NovelasLigerasProvider(),
@@ -117,26 +107,20 @@ class Apis {
             NovelLightProvider(),
             NovelManiaProvider(),
             NovelFranceProvider(),
-            //NovelPassionProvider(), // Site gone
-            //NovelsOnlineProvider(), // not working
             NovLoveProvider(),
             NovelPhoenixProvider(),
             PawReadProver(),
-            //PlanetaEpubProvider(), //not working
             QuanbenProvider(),
             RanobesProvider(),
             RanovelProvider(),
             RanobeHubProvider(),
-            //RanobesProvider(),
-            //ReadAnyBookProvider(), // Books locked behind login
             ReadfromnetProvider(),
             ReadhiveProvider(),
-            //ReadLightNovelProvider(), // NOT WORKING?
             ReadNovelFullProvider(),
             ReadOnlineFreeBookProvider(),
             RewayatProvider(),
             RoyalRoadProvider(),
-            SakuraNovelProvider(), // cloudflare?
+            SakuraNovelProvider(),
             ScribblehubProvider(),
             ScrollersPubProvider(),
             SyosetuProvider(),
@@ -147,9 +131,14 @@ class Apis {
             WuxiaBoxProvider(),
             WuxiaClickProvider(),
             WuxiaWorldProvider(),
-            //WuxiaWorldOnlineProvider(), // Site does not work
-            //WuxiaWorldSiteProvider(),
         ).sortedBy { it.name }
+
+        var apis: List<MainAPI> = defaultApis
+
+        fun reloadApis(context: Context) {
+            val dynamicPlugins = DynamicPluginManager.loadInstalledPlugins(context)
+            apis = (defaultApis + dynamicPlugins).sortedBy { it.name }
+        }
 
         fun getApiFromName(name: String): APIRepository {
             return getApiFromNameOrNull(name) ?: APIRepository(apis[1])
@@ -174,24 +163,6 @@ class Apis {
         }
 
         fun printProviders() {
-            /*
-            var str = ""
-            for (api in apis) {
-                str += "- ${api.mainUrl}\n"
-            }
-            println(str)
-
-            var str2 = ""
-            for (api in apis) {
-                val url = api.mainUrl.toUri()
-                str2 += "                <data\n" +
-                        "                        android:scheme=\"${url.scheme}\"\n" +
-                        "                        android:host=\"${url.host}\"\n" +
-                        "                        android:pathPrefix=\"/\" />"
-            }
-            println(str2)
-
-            testProviders()*/
         }
 
         fun testProviders() = ioSafe {
@@ -273,7 +244,7 @@ class Apis {
         fun Context.getApiProviderLangSettings(): HashSet<String> {
             val settingsManager = PreferenceManager.getDefaultSharedPreferences(this)
             val hashSet = HashSet<String>()
-            hashSet.add("en") // def is only en
+            hashSet.add("en")
             val list = settingsManager.getStringSet(
                 this.getString(R.string.provider_lang_key),
                 hashSet.toMutableSet()
